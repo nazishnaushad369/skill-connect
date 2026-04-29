@@ -140,72 +140,92 @@ class PingView(APIView):
 
 
 class ForgotPasswordView(APIView):
-    """Send a password-reset email. Always returns 200 (security best practice)."""
+    """Send a real password-reset email via Brevo SMTP."""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         from django.contrib.auth.tokens import default_token_generator
         from django.utils.http import urlsafe_base64_encode
         from django.utils.encoding import force_bytes
-        from django.core.mail import send_mail
+        from django.core.mail import EmailMultiAlternatives
         from django.conf import settings
 
         email = request.data.get('email', '').strip().lower()
+        phone = request.data.get('phone', '').strip()
+
+        # Look up user by email OR phone number
+        user = None
         try:
-            user = User.objects.get(email__iexact=email, is_active=True)
-            uid   = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
-            reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
-
-            html_message = f"""
-<div style="font-family: 'Inter', Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #E2E8F0;">
-  <div style="background: linear-gradient(135deg, #6366F1, #8B5CF6); padding: 36px 40px; text-align: center;">
-    <div style="display: inline-flex; align-items: center; gap: 10px;">
-      <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;">
-        <span style="font-size: 20px;">⚡</span>
-      </div>
-      <span style="font-size: 24px; font-weight: 900; color: white; letter-spacing: -0.5px;">Skill<span style="opacity:0.85">Connect</span></span>
-    </div>
-  </div>
-  <div style="padding: 40px;">
-    <h1 style="font-size: 22px; font-weight: 800; color: #0F172A; margin: 0 0 8px;">Reset Your Password 🔐</h1>
-    <p style="color: #64748B; font-size: 15px; line-height: 1.6; margin: 0 0 28px;">
-      Hi <strong style="color: #0F172A;">{user.name}</strong>,<br><br>
-      We received a request to reset your SkillConnect password. Click the button below to create a new password. This link is valid for <strong>24 hours</strong>.
-    </p>
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="{reset_url}" style="display: inline-block; background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; text-decoration: none; padding: 14px 36px; border-radius: 12px; font-weight: 700; font-size: 15px; letter-spacing: 0.2px; box-shadow: 0 4px 16px rgba(99,102,241,0.35);">
-        Reset My Password →
-      </a>
-    </div>
-    <p style="color: #94A3B8; font-size: 13px; line-height: 1.6; margin: 28px 0 0;">
-      If you didn't request this, you can safely ignore this email. Your password will remain unchanged.<br><br>
-      Or copy this link: <a href="{reset_url}" style="color: #6366F1; word-break: break-all;">{reset_url}</a>
-    </p>
-  </div>
-  <div style="background: #F8FAFC; padding: 20px 40px; text-align: center; border-top: 1px solid #E2E8F0;">
-    <p style="color: #94A3B8; font-size: 12px; margin: 0;">© 2025 SkillConnect. Exchange Skills. Unlock Your Potential.</p>
-  </div>
-</div>
-"""
-            try:
-                from django.core.mail import EmailMultiAlternatives
-                msg = EmailMultiAlternatives(
-                    subject='Reset your SkillConnect password',
-                    body=f"Hi {user.name},\n\nReset your password here: {reset_url}\n\nThis link expires in 24 hours.\n\n— SkillConnect Team",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[user.email],
-                )
-                msg.attach_alternative(html_message, "text/html")
-                msg.send()
-                print(f"[SkillConnect] ✅ Password reset email sent to {user.email}")
-            except Exception as email_error:
-                print(f"[SkillConnect] ❌ Email error: {email_error}")
-
+            if email:
+                user = User.objects.get(email__iexact=email, is_active=True)
+            elif phone:
+                # Strip spaces/dashes for flexible matching
+                clean_phone = phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+                user = User.objects.filter(is_active=True).extra(
+                    where=["REPLACE(REPLACE(REPLACE(REPLACE(phone,'(',''),')',''),'-',''),' ','') = %s"],
+                    params=[clean_phone]
+                ).first()
+                if not user:
+                    return Response({'detail': 'If an account exists, a reset link has been sent.'})
         except User.DoesNotExist:
-            pass  # Don't reveal if email exists
+            return Response({'detail': 'If an account exists, a reset link has been sent.'})
 
-        # Always return success so attackers can't enumerate emails
+        if not user:
+            return Response({'detail': 'If an account exists, a reset link has been sent.'})
+
+
+        uid       = urlsafe_base64_encode(force_bytes(user.pk))
+        token     = default_token_generator.make_token(user)
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+        name      = user.name
+
+        text_body = (
+            f"Hi {name},\n\n"
+            f"Reset your SkillConnect password here:\n{reset_url}\n\n"
+            "This link expires in 24 hours.\n\n— SkillConnect Team"
+        )
+
+        html_parts = [
+            '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;',
+            'background:#fff;border-radius:16px;overflow:hidden;border:1px solid #E2E8F0;">',
+            '<div style="background:linear-gradient(135deg,#6366F1,#8B5CF6);',
+            'padding:36px 40px;text-align:center;">',
+            '<span style="font-size:26px;font-weight:900;color:#fff;">&#9889; SkillConnect</span>',
+            '</div>',
+            '<div style="padding:40px;">',
+            f'<h2 style="font-size:22px;color:#0F172A;margin:0 0 12px;">Hi {name}!</h2>',
+            '<p style="color:#64748B;font-size:15px;line-height:1.7;margin:0 0 28px;">',
+            'We received a request to reset your SkillConnect password.<br>',
+            'Click the button below &mdash; link valid for <strong>24 hours</strong>.</p>',
+            '<div style="text-align:center;margin:28px 0;">',
+            f'<a href="{reset_url}" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);',
+            'color:#fff;text-decoration:none;padding:14px 36px;border-radius:12px;',
+            'font-weight:700;font-size:15px;display:inline-block;">Reset My Password &rarr;</a>',
+            '</div>',
+            '<p style="color:#94A3B8;font-size:13px;line-height:1.6;">',
+            "Didn't request this? You can safely ignore this email.<br>",
+            f'Or paste this link: <a href="{reset_url}" style="color:#6366F1;">{reset_url}</a></p>',
+            '</div>',
+            '<div style="background:#F8FAFC;padding:18px 40px;text-align:center;',
+            'border-top:1px solid #E2E8F0;">',
+            '<p style="color:#94A3B8;font-size:12px;margin:0;">&copy; 2025 SkillConnect</p>',
+            '</div></div>',
+        ]
+        html_body = ''.join(html_parts)
+
+        try:
+            msg = EmailMultiAlternatives(
+                subject='Reset your SkillConnect password',
+                body=text_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user.email],
+            )
+            msg.attach_alternative(html_body, 'text/html')
+            msg.send()
+            print(f"[SkillConnect] Email sent to {user.email}")
+        except Exception as err:
+            print(f"[SkillConnect] Email error: {err}")
+
         return Response({'detail': 'If an account exists, a reset link has been sent.'})
 
 
