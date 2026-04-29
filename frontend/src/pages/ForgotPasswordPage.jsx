@@ -14,9 +14,19 @@ export default function ForgotPasswordPage() {
     if (!email) return
     setLoading(true)
     try {
-      // Simulate sending (shows success either way — security best practice)
-      await new Promise(r => setTimeout(r, 1200))
-      setSent(true)
+      const res = await fetch('/api/auth/forgot-password/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      // Always show success (security: don't reveal if email exists)
+      if (res.ok || res.status === 200) {
+        setSent(true)
+      } else {
+        toast.error('Something went wrong. Please try again.')
+      }
+    } catch {
+      toast.error('Network error. Please check your connection.')
     } finally {
       setLoading(false)
     }

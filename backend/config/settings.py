@@ -150,3 +150,21 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': False,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+# ── Static files (WhiteNoise) ──────────────────────────────────────────────────
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# ── Email ─────────────────────────────────────────────────────────────────────
+# In production set these env vars: EMAIL_HOST_USER, EMAIL_HOST_PASSWORD
+EMAIL_BACKEND   = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST      = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT      = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS   = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', 'SkillConnect <noreply@skillconnect.app>')
+
+# Frontend base URL (used in password reset links)
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+

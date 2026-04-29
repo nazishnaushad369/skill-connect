@@ -137,3 +137,80 @@ class PingView(APIView):
         request.user.last_seen = timezone.now()
         request.user.save(update_fields=['last_seen'])
         return Response({'status': 'ok'})
+
+
+class ForgotPasswordView(APIView):
+    """Send a password-reset email. Always returns 200 (security best practice)."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from django.core.mail import send_mail
+        from django.conf import settings
+
+        email = request.data.get('email', '').strip().lower()
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+            uid   = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+
+            send_mail(
+                subject='Reset your SkillConnect password',
+                message=f"""Hi {user.name},
+
+You requested a password reset for your SkillConnect account.
+
+Click the link below to set a new password (valid for 24 hours):
+
+{reset_url}
+
+If you did not request this, you can safely ignore this email.
+
+— The SkillConnect Team
+""",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+            )
+        except User.DoesNotExist:
+            pass  # Don't reveal if email exists
+
+        # Always return success so attackers can't enumerate emails
+        return Response({'detail': 'If an account exists, a reset link has been sent.'})
+
+
+class ResetPasswordView(APIView):
+    """Validate token and set the new password."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.http import urlsafe_base64_decode
+        from django.utils.encoding import force_str
+
+        uid      = request.data.get('uid', '')
+        token    = request.data.get('token', '')
+        password = request.data.get('password', '')
+
+        if not uid or not token or not password:
+            return Response({'detail': 'uid, token and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(password) < 6:
+            return Response({'detail': 'Password must be at least 6 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user_pk = force_str(urlsafe_base64_decode(uid))
+            user    = User.objects.get(pk=user_pk, is_active=True)
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            return Response({'detail': 'Invalid reset link.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({'detail': 'Reset link has expired or is invalid. Please request a new one.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(password)
+        user.save()
+        return Response({'detail': 'Password updated successfully. You can now log in.'})
+

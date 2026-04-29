@@ -4,7 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import LandingPage    from './pages/LandingPage'
 import LoginPage      from './pages/LoginPage'
 import RegisterPage   from './pages/RegisterPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ForgotPasswordPage  from './pages/ForgotPasswordPage'
+import ResetPasswordPage   from './pages/ResetPasswordPage'
 import Dashboard      from './pages/Dashboard'
 import SkillBrowser   from './pages/SkillBrowser'
 import MatchesPage    from './pages/MatchesPage'
@@ -58,6 +59,7 @@ function AppRoutes() {
       <Route path="/login"            element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register"         element={<PublicRoute><RegisterPage /></PublicRoute>} />
       <Route path="/forgot-password"  element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+      <Route path="/reset-password"   element={<ResetPasswordPage />} />
       <Route path="/pricing"          element={<ProtectedRoute userOnly><PricingPage /></ProtectedRoute>} />
       <Route path="/payment"          element={<ProtectedRoute userOnly><PaymentPage /></ProtectedRoute>} />
 
