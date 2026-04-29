@@ -157,29 +157,57 @@ class ForgotPasswordView(APIView):
             token = default_token_generator.make_token(user)
             reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
 
-            send_mail(
-                subject='Reset your SkillConnect password',
-                message=f"""Hi {user.name},
+            html_message = f"""
+<div style="font-family: 'Inter', Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #E2E8F0;">
+  <div style="background: linear-gradient(135deg, #6366F1, #8B5CF6); padding: 36px 40px; text-align: center;">
+    <div style="display: inline-flex; align-items: center; gap: 10px;">
+      <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;">
+        <span style="font-size: 20px;">⚡</span>
+      </div>
+      <span style="font-size: 24px; font-weight: 900; color: white; letter-spacing: -0.5px;">Skill<span style="opacity:0.85">Connect</span></span>
+    </div>
+  </div>
+  <div style="padding: 40px;">
+    <h1 style="font-size: 22px; font-weight: 800; color: #0F172A; margin: 0 0 8px;">Reset Your Password 🔐</h1>
+    <p style="color: #64748B; font-size: 15px; line-height: 1.6; margin: 0 0 28px;">
+      Hi <strong style="color: #0F172A;">{user.name}</strong>,<br><br>
+      We received a request to reset your SkillConnect password. Click the button below to create a new password. This link is valid for <strong>24 hours</strong>.
+    </p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="{reset_url}" style="display: inline-block; background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; text-decoration: none; padding: 14px 36px; border-radius: 12px; font-weight: 700; font-size: 15px; letter-spacing: 0.2px; box-shadow: 0 4px 16px rgba(99,102,241,0.35);">
+        Reset My Password →
+      </a>
+    </div>
+    <p style="color: #94A3B8; font-size: 13px; line-height: 1.6; margin: 28px 0 0;">
+      If you didn't request this, you can safely ignore this email. Your password will remain unchanged.<br><br>
+      Or copy this link: <a href="{reset_url}" style="color: #6366F1; word-break: break-all;">{reset_url}</a>
+    </p>
+  </div>
+  <div style="background: #F8FAFC; padding: 20px 40px; text-align: center; border-top: 1px solid #E2E8F0;">
+    <p style="color: #94A3B8; font-size: 12px; margin: 0;">© 2025 SkillConnect. Exchange Skills. Unlock Your Potential.</p>
+  </div>
+</div>
+"""
+            try:
+                from django.core.mail import EmailMultiAlternatives
+                msg = EmailMultiAlternatives(
+                    subject='Reset your SkillConnect password',
+                    body=f"Hi {user.name},\n\nReset your password here: {reset_url}\n\nThis link expires in 24 hours.\n\n— SkillConnect Team",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[user.email],
+                )
+                msg.attach_alternative(html_message, "text/html")
+                msg.send()
+                print(f"[SkillConnect] ✅ Password reset email sent to {user.email}")
+            except Exception as email_error:
+                print(f"[SkillConnect] ❌ Email error: {email_error}")
 
-You requested a password reset for your SkillConnect account.
-
-Click the link below to set a new password (valid for 24 hours):
-
-{reset_url}
-
-If you did not request this, you can safely ignore this email.
-
-— The SkillConnect Team
-""",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=True,
-            )
         except User.DoesNotExist:
             pass  # Don't reveal if email exists
 
         # Always return success so attackers can't enumerate emails
         return Response({'detail': 'If an account exists, a reset link has been sent.'})
+
 
 
 class ResetPasswordView(APIView):

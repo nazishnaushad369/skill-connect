@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+from decouple import config, Csv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -155,16 +156,18 @@ SIMPLE_JWT = {
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# ── Email ─────────────────────────────────────────────────────────────────────
-# In production set these env vars: EMAIL_HOST_USER, EMAIL_HOST_PASSWORD
-EMAIL_BACKEND   = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST      = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT      = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS   = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', 'SkillConnect <noreply@skillconnect.app>')
+# ── Email (Resend SMTP) ────────────────────────────────────────────────────────
+# Reads from .env — uses Resend SMTP when EMAIL_HOST_PASSWORD is set
+_email_pw = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend' if _email_pw else 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST          = config('EMAIL_HOST', default='smtp.resend.com')
+EMAIL_PORT          = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS       = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER     = config('EMAIL_HOST_USER', default='resend')
+EMAIL_HOST_PASSWORD = _email_pw
+DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL', default='SkillConnect <onboarding@resend.dev>')
 
 # Frontend base URL (used in password reset links)
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+
 
