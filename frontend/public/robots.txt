@@ -15,4 +15,4 @@ Disallow: /admin
 Disallow: /api/
 
 # Sitemap location
-Sitemap: https://skillconnect-app.vercel.app/sitemap.xml
+Sitemap: https://skill-connect-steel-one.vercel.app/sitemap.xml
