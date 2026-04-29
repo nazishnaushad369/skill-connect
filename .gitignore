@@ -1,0 +1,65 @@
+# Python / Django
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+.tox/
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual env
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+*.venv
+venv/
+env/
+
+# Django
+*.sqlite3
+media/
+staticfiles/
+static_collected/
+local_settings.py
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Misc
+*.log
+*.bak
+*.tmp
+SYNOPSIS.txt
+generate_synopsis.py
+check_mysql.py
+test_mysql.py
+mysql_reset.sql
+reset_mysql.ps1
+RESET_MYSQL_AS_ADMIN.bat
+seed_database.ps1

@@ -1,0 +1,18 @@
+# SkillConnect – robots.txt
+# Allow all search engines to crawl the site
+
+User-agent: *
+Allow: /
+
+# Block internal/private routes from being indexed
+Disallow: /dashboard
+Disallow: /messages
+Disallow: /sessions
+Disallow: /matches
+Disallow: /profile
+Disallow: /settings
+Disallow: /admin
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://skillconnect-app.vercel.app/sitemap.xml
