@@ -129,6 +129,10 @@ CORS_ALLOWED_ORIGINS = CORS_ORIGINS_ENV.split(',') if CORS_ORIGINS_ENV else [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
 ]
+# Also allow any Vercel preview/production URL automatically
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https://.*\.vercel\.app$',
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # ── DRF ───────────────────────────────────────────────────────────────────────
@@ -168,6 +172,6 @@ EMAIL_HOST_PASSWORD = _email_pw
 DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL', default='SkillConnect <onboarding@resend.dev>')
 
 # Frontend base URL (used in password reset links)
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+FRONTEND_URL = config('FRONTEND_URL', default='https://skill-connect-ruym.vercel.app')
 
 
